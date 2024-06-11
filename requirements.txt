@@ -1,0 +1,9 @@
+opencv-python
+scikit-learn
+pycaret
+pandas
+tqdm
+scikit-image
+keras
+tensorflow
+git+https://github.com/MasterTrtle/imgaug.git
