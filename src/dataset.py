@@ -52,8 +52,6 @@ class dataset:
         print(f"Total loading time: {time_end - time_start:.2f} seconds")
 
     def preprocess(self):
-        chunksize = 100
-        chunk_data = []
         imgs_data = []
         self.data = None  # Add this line to initialize self.data
         for img in tqdm(self.images, desc="Preprocessing images"):
@@ -64,20 +62,6 @@ class dataset:
                 continue
             imgs_data.append(img.data)
         self.data = np.array(imgs_data)
-        """
-            chunk_data.append(img.data)  # Change img_data to img.data to get the preprocessed data
-            if len(chunk_data) == chunksize:
-                if self.data is None:
-                    self.data = np.array(chunk_data)
-                else:
-                    self.data = np.concatenate((self.data, np.array(chunk_data)), axis=0)
-                chunk_data = []
-        if chunk_data:
-            if self.data is None:  # Add this check to handle the case when self.data is None
-                self.data = np.array(chunk_data)
-            else:
-                self.data = np.concatenate((self.data, np.array(chunk_data)), axis=0)
-        """
 
     def augment(self, augment_path, target_size):
         augment_label_map = {label: [] for label in self.label_map.keys()}
@@ -96,21 +80,28 @@ class dataset:
 
         for new_img in results:
             if new_img.skip:
+                print(f"Skipping image {new_img.name}")
                 continue
             else:
                 augment_label_map[new_img.label].append(new_img)
 
         imgs = []
         for label in self.label_map:
+            if label == "none":
+                continue
             current_size = len(self.label_map[label])
-            n_augment = target_size - current_size
-            print(f"Augmenting label {label} with {n_augment} images")
-            self.augment_label(imgs, augment_label_map[label], n_augment)
+            n_augment = int(target_size - current_size)
+            if n_augment <= 0:
+                print(f"Skipping label {label} as it already has enough images")
+                continue
+            print(
+                f"Augmenting label {label} with {n_augment} images, using {len(augment_label_map[label])} images"
+            )
+            self.augment_label(augment_label_map[label], n_augment)
         self.images.extend(imgs)
         self.label_map = {}
 
-    def augment_label(self, imgs, augment_imgs, n_augment):
-        current_size = len(imgs)
+    def augment_label(self, augment_imgs, n_augment):
         # suffle the augment_imgs
         random.shuffle(augment_imgs)
         possible_augment = augment_imgs.copy()

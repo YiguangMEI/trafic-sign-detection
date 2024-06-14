@@ -9,5 +9,7 @@ pip install -r requirements.txt
 # Run
 Use the jupyter notebook to run the code. 
 
+Or launch main.py
+
 # Author
 Laval Alexandre

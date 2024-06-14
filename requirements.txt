@@ -7,3 +7,4 @@ scikit-image
 keras
 tensorflow
 git+https://github.com/MasterTrtle/imgaug.git
+seaborn
