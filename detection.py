@@ -10,59 +10,7 @@ import numpy as np
 from src.model import model
 import pandas as pd
 import os
-import selectivesearch
-
-
-
-"""
-def pyramid(image, scale=1.5, min_size=(50, 50)):
-    yield image
-    while True:
-        w = int(image.shape[1] / scale)
-        image = cv2.resize(image, (w, int(w * image.shape[0] / image.shape[1])))
-        if image.shape[0] < min_size[1] or image.shape[1] < min_size[0]:
-            break
-        yield image
-
-def sliding_window(image, step_size, window_sizes):
-    for window_size in window_sizes:
-        for y in range(0, image.shape[0] - window_size[1], step_size):
-            for x in range(0, image.shape[1] - window_size[0], step_size):
-                yield (x, y, window_size, image[y:y + window_size[1], x:x + window_size[0]])
-
-def detect_traffic_signs(image, model, win_sizes=[(50,50),(200,200),(400,400)], step_size=25, pyramid_scale=1.5):
-    detections = []
-    for resized in pyramid(image, scale=pyramid_scale, min_size=(50, 50)):
-        for (x, y, win_size,window) in sliding_window(resized, step_size, win_sizes):
-            if window.shape[0] != win_size[1] or window.shape[1] != win_size[0]:
-                continue
-                
-           # img_window=img(window=window) 
-            #print(img_window.data)
-            prediction = model.predict_window(window)
-            
-            #print(prediction)
-            
-            prediction_probabilities=model.predict_proba_window(window)
-            #print(model.classifier.classes_)
-            #print(prediction_probabilities)
-            max_probabilities = np.max(prediction_probabilities, axis=1)            
-            #print(prediction)          
-            if prediction!='none' and max_probabilities > 0.9 :  # Assuming '1' indicates a traffic sign
-            
-                
-                x_orig = int(x * (image.shape[1] / resized.shape[1]))
-                y_orig = int(y * (image.shape[0] / resized.shape[0]))
-                w_orig = int(win_size[0] * (image.shape[1] / resized.shape[1]))
-                h_orig = int(win_size[1] * (image.shape[0] / resized.shape[0]))
-                print(model.classifier.classes_)
-                #print(prediction_probabilities)
-                print(prediction)
-                prob =max_probabilities[0]
-                detections.append((x_orig, y_orig, x_orig+w_orig, y_orig+h_orig,prediction[0],prob))
-    
-    return detections
-"""
+from tqdm import tqdm
 def pyramid(image, scale=1.1, min_size_ratio=0.1):
     yield image
     min_height = int(image.shape[0] * min_size_ratio)
@@ -77,11 +25,11 @@ def pyramid(image, scale=1.1, min_size_ratio=0.1):
 def sliding_window(image, step_size_ratio,window_width):
     height, width = image.shape[:2]
     
-    print("imagesize:",height,width)       
+    #print("imagesize:",height,width)
     window_width = window_width 
     window_height = window_width
     step_size = 50
-    print("windowsize:",window_width,window_height)
+    #print("windowsize:",window_width,window_height)
     for y in range(0, height - window_height, step_size):
         for x in range(0, width - window_width, step_size):
             yield (x, y, (window_width, window_height), image[y:y + window_height, x:x + window_width])
@@ -203,59 +151,6 @@ def detect_traffic_signs_without_piramid(image, model, step_size_ratio=0.2, min_
     return detections
 
 
-def selective_search(image):
-    # 使用selectivesearch库进行选择搜索
-    image_int = (image * 255).astype(np.uint8)
-    img_lbl, regions = selectivesearch.selective_search(
-        image_int, scale=250, sigma=0.9, min_size=100)
-    
-    candidates = set()
-    for r in regions:
-        # 排除重复的候选区域
-        if r['rect'] in candidates:
-            continue
-        # 排除太小的区域
-        if r['size'] < 10000:
-            continue
-        x, y, w, h = r['rect']
-        # 排除扭曲的候选区域
-        if w == 0 or h == 0 or w / h > 2 or h / w > 3:
-            continue
-        candidates.add(r['rect'])
-    
-    # 遍历候选区域并绘制矩形框
-    for (x, y, w, h) in candidates:
-        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    
-    # 显示结果图片
-    plt.figure()
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
-    plt.show()
-    
-    return candidates
-
-def detect_traffic_signs_with_selective_search(image, model):
-    detections = []
-    candidates = selective_search(image)
-    
-    for (x, y, w, h) in candidates:
-        window = image[y:y + h, x:x + w]
-        if window.shape[0] != h or window.shape[1] != w:
-            continue
-
-        prediction = model.predict_window(window)
-        prediction_probabilities = model.predict_proba_window(window)
-        max_probabilities = np.max(prediction_probabilities, axis=1)
-        prob = max_probabilities[0]
-        if prediction != 'none' and prediction != 'frouge' and prediction != 'forange' and prediction != 'fvert' and max_probabilities[0] > 0.8:
-            detections.append((x, y, x + w, y + h, prediction[0], prob))
-        elif (prediction == 'frouge' or prediction == 'forange' or prediction == 'fvert') and max_probabilities[0] > 0.8:
-            detections.append((x, y, x + w, y + h, prediction[0], prob))
-    
-    print(detections)
-    return detections
-
 def non_max_suppression(boxes, overlap_thresh):
     if len(boxes) == 0:
         return []
@@ -292,17 +187,7 @@ def non_max_suppression(boxes, overlap_thresh):
 
 
 
-
-import joblib
-#use model.predict_window(self, window) to predict a window
-seed = 42
-my_model = model(seed)
-my_model.classifier = joblib.load("src/models/bangerv3.pkl")
-print(my_model.classifier)
-
-#%%
-
-akdshj
+#akdshj
 #%% detection all
 def detection_image(image_path, model,csv_path):
     image = cv2.imread(image_path)
@@ -330,12 +215,12 @@ def detection_images_in_folder(folder_path, model, csv_path):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
         
-    for filename in os.listdir(folder_path):
+    for filename in tqdm(os.listdir(folder_path), desc="Detecting traffic signs"):
         if filename.endswith(".jpg"):
             image_path = os.path.join(folder_path, filename)
             print(filename)
             image = cv2.imread(image_path)
-            detections = detect_traffic_signs_with_selective_search(image, model)
+            detections = detect_traffic_signs_without_piramid(image, model)
             boxes = np.array(detections)
             picked_boxes = non_max_suppression(boxes, 0.1)  
 
@@ -353,239 +238,7 @@ def detection_images_in_folder(folder_path, model, csv_path):
     df = pd.DataFrame(results, columns=['Num img', 'Coin h-g x', 'Coin h-g y', 'Coin b-d x', 'Coin b-d y', 'Score', 'Classe'])
     df.to_csv(csv_path, index=False)
 
-detection_images_in_folder('C:/Users/23158/Desktop/SY32PROJET/dataset2/val/images/', my_model,'detections.csv')
-    
-  
-#%%get results
 
-detections_path = 'detections.csv'
-labels_path = 'C:/Users/23158/Desktop/SY32PROJET/dataset2/val/labels/'
-
-detections_df = pd.read_csv(detections_path, header=None)
-detections_df.columns = ['image', 'x1', 'y1', 'x2', 'y2', 'score','label']
-
-print(detections_df)
-
-images_path = 'C:/Users/23158/Desktop/SY32PROJET/dataset2/val/images/'
-output_path = 'C:/Users/23158/Desktop/SY32PROJET/dataset2/val/output/'
-os.makedirs(output_path, exist_ok=True)
-
-for image_name in detections_df['image'].unique():
-    image_path = os.path.join(images_path, image_name)
-    image = cv2.imread(image_path)
-    
-    if image is None:
-        print(f"no: {image_path}")
-        continue
-    
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
-    fig, ax = plt.subplots(1)
-    ax.imshow(image_rgb)
-    
-   
-    detections = detections_df[detections_df['image'] == image_name]
-    for _, row in detections.iterrows():
-        rect = plt.Rectangle((row['x1'], row['y1']), row['x2'] - row['x1'], row['y2'] - row['y1'], edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-        label_x = row['x1']
-        label_y = row['y2'] + 5  
-        ax.text(label_x, label_y, row['label'], color='r', fontsize=12)
-    
-
-    label_file = os.path.join(labels_path, image_name.replace('.jpg', '.csv'))
-    if os.path.exists(label_file):
-        with open(label_file, 'r') as f:
-            for line in f.readlines():
-                parts = line.strip().split(',')
-                if len(parts) < 5:
-                    print(f"no: {label_file} line: {line}")
-                    continue
-                label = parts[4]
-                if label != 'ff':
-                    try:
-                        x1, y1, x2, y2 = map(float, parts[0:4])
-                        rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1, edgecolor='g', facecolor='none')
-                        ax.add_patch(rect)
-                    except ValueError as e:
-                        print(f"error: {e} in {label_file} line: {line}")
-    
-    plt.axis('off')
-    output_image_path = os.path.join(output_path, image_name)
-    plt.savefig(output_image_path)
-    plt.close()
-    print(f"save: {output_image_path}")
-#%%validation.csv
-import os
-import pandas as pd
-
-
-val_path = 'C:/Users/23158/Desktop/SY32PROJET/dataset2/val/labels'
-
-
-csv_files = [file for file in os.listdir(val_path) if file.endswith('.csv')]
-
-
-dfs = []
-
-
-for csv_file in csv_files:
-    file_path = os.path.join(val_path, csv_file)
-    try:
-       
-        df = pd.read_csv(file_path, header=None)
-        if df.empty:
-          
-            continue
-        
- 
-        image_name = os.path.splitext(csv_file)[0]
-        
-        df.insert(0, 'num_image', image_name + '.jpg')
-       
-        dfs.append(df)
-    except pd.errors.EmptyDataError:
-     
-        print(f"'{csv_file}'empty")
-
-if not dfs:
-    print("nocsv")
-
-else:
-   
-    merged_df = pd.concat(dfs, ignore_index=True)
-
-    output_file = 'validations.csv'
-    merged_df.to_csv(output_file, index=False, header=False)
-
-    print(f"save{output_file}")
-#%% analays
-import pandas as pd
-
-
-
-# Load the data
-validations = pd.read_csv('validations.csv',header=None)
-detections = pd.read_csv('detections.csv',header=None)
-
-# Filter out the 'ff' labels
-validations = validations[validations.iloc[:, 5] != 'ff']
-detections = detections[detections.iloc[:, 6] != 'ff']
-
-
-
-# Initialize lists to store y (ground truth) and y_pred (predictions)
-y = []
-y_pred = []
-matching_validation_row=[]
-# Define IoU function
-def iou(box1, box2):
-    # Unpack the coordinates
-    x1_min, y1_min, x1_max, y1_max = box1
-    x2_min, y2_min, x2_max, y2_max = box2
-
-    # Calculate the intersection coordinates
-    inter_x_min = max(x1_min, x2_min)
-    inter_y_min = max(y1_min, y2_min)
-    inter_x_max = min(x1_max, x2_max)
-    inter_y_max = min(y1_max, y2_max)
-
-    # Calculate the intersection area
-    inter_area = max(0, inter_x_max - inter_x_min) * max(0, inter_y_max - inter_y_min)
-
-    # Calculate the areas of each box
-    box1_area = (x1_max - x1_min) * (y1_max - y1_min)
-    box2_area = (x2_max - x2_min) * (y2_max - y2_min)
-
-    # Calculate the union area
-    union_area = box1_area + box2_area - inter_area
-
-    # Calculate the IoU
-    iou = inter_area / union_area
-
-    return iou
-
-# Match detections with ground truth
-for _, detection_row in detections.iterrows():
-    image_id_d, x_min_d, y_min_d, x_max_d, y_max_d, score_d, label_d = detection_row
-    max_iou = 0
-    matching_validation = 'none'
-
-    for _, validation_row in validations.iterrows():
-        image_id_v, x_min_v, y_min_v, x_max_v, y_max_v, label_v = validation_row
-        
-        if image_id_v == image_id_d and label_v == label_d:
-            iou_value = iou((x_min_v, y_min_v, x_max_v, y_max_v), (x_min_d, y_min_d, x_max_d, y_max_d))
-            
-            if iou_value > max_iou:
-                max_iou = iou_value
-                matching_validation = label_v
-                
-                matching_validation_row.append(_)
-    
-    # Add ground truth and prediction based on maximum IoU
-    #if matching_validation:
-    y_pred.append(label_d)
-    y.append(matching_validation)
-
-for _, validation_row in validations.iterrows():
-    image_id_v, x_min_v, y_min_v, x_max_v, y_max_v, label_v = validation_row
-    if _  not in matching_validation_row:
-        y.append(label_v)
-        y_pred.append('none')
-     
-
-print(len(y_pred))
-print(len(y))
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
-# plot confusion matrix
-cm = confusion_matrix(y, y_pred)
-cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-# Get unique labels
-unique_labels = list(set(y))
-
-plt.figure(figsize=(10, 7))
-sns.heatmap(
-    cm_normalized,
-    annot=True,
-    fmt=".2%",
-    xticklabels=unique_labels,
-    yticklabels=unique_labels,
-    cmap="Blues",
-)
-plt.xlabel("Predicted")
-plt.ylabel("Truth")
-plt.show()
-
-precision = {}
-recall = {}
-
-for i in range(len(unique_labels)):
-    cls = unique_labels[i]
-    tp = cm[i, i]
-    fp = np.sum(cm[:, i]) - tp
-    fn = np.sum(cm[i, :]) - tp
-    
-    precision[cls] = tp / (tp + fp) if tp + fp > 0 else 0
-    recall[cls] = tp / (tp + fn) if tp + fn > 0 else 0
-
-print("Precision:\n", precision)
-print("\nRecall:\n", recall)
-
-ap_per_class = []
-for cls in unique_labels:
-    if precision[cls] + recall[cls] > 0:
-        ap_per_class.append(precision[cls] * recall[cls] / (precision[cls] + recall[cls]))
-
-mAP = np.mean(ap_per_class) if ap_per_class else 0
-
-print("\nmAP:\n", mAP)
-
-
-#%% select_region_and_predict
 def select_region_and_predict(image_path, model):
 
     global ref_point, cropping, image, clone
@@ -621,7 +274,7 @@ def select_region_and_predict(image_path, model):
 
         elif key == ord('c') and len(ref_point) == 2:
             roi = clone[ref_point[0][1]:ref_point[1][1], ref_point[0][0]:ref_point[1][0]]
-            prediction = model.predict_window(roi)
+            #prediction = model.predict_window(roi)
             prediction_probabilities = model.predict_proba_window(roi)
 
             top_indices = prediction_probabilities.argsort()[0][-3:][::-1]
@@ -645,35 +298,6 @@ def select_region_and_predict(image_path, model):
             break
 
     cv2.destroyAllWindows()
-
-# exemple
-image_path = 'C:/Users/23158/Desktop/SY32PROJET/dataset2/val/images/0871.jpg'
-result = select_region_and_predict(image_path, my_model)
-print("Prediction Result:", result)
-
-#%% stop
-image = cv2.imread('C:/Users/23158/Desktop/SY32PROJET/dataset2/val/images/0871.jpg')
-output_image = image.copy()
-detections = detect_traffic_signs_with_selective_search(image, my_model)
-boxes = np.array(detections)
-picked_boxes = non_max_suppression(boxes, 0.1)
-#picked_boxes=boxes
-print(picked_boxes)
-for (x1, y1, x2, y2, label,max_probabilities) in picked_boxes:  
-    x1, y1, x2, y2 ,max_probabilities= int(x1), int(y1), int(x2), int(y2),float(max_probabilities)
-    cv2.rectangle(output_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    
-    text = f"{label}: {max_probabilities:.2f}"
-    # 显示文本
-    cv2.putText(output_image, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
-plt.figure()
-plt.imshow(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))  
-plt.title('Detections')  
-plt.axis('off')  
-plt.show()
-
-
 
 
 
